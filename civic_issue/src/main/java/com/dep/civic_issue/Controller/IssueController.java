@@ -4,11 +4,10 @@ import com.dep.civic_issue.Entity.IssueReport;
 import com.dep.civic_issue.Service.IssueService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/issue")
@@ -32,6 +31,16 @@ public class IssueController {
             ){
         IssueReport issueReport  = issueService.saveIssue(title,description,latitude,longitude,department_id,user_id,imgfile);
         return ResponseEntity.ok(issueReport);
+
+    }
+
+    @GetMapping("/my-issues/{userId}")
+    public List<IssueReport> getUserIssues(@PathVariable Long userId) {
+        return issueService.getIssueByUsers(userId);
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<IssueReport> updateIssue(@PathVariable Long id , @RequestBody IssueReport issueReport){
 
     }
 }
