@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome - Civic Issue Portal</title>
+    <link rel="stylesheet" th:href="@{/css/landing.css}">
+</head>
+<body>
+<div class="container">
+    <h1>Welcome to Civic Issue Portal</h1>
+    <p class="subtitle">Choose what you want to do:</p>
+
+    <div class="button-group">
+        <button onclick="window.location.href='/report-issue'">📝 Report New Issue</button>
+        <button onclick="window.location.href='/issues'">📋 View My Issues</button>
+        <button onclick="window.location.href='/update-issue'">✏️ Update Issue</button>
+        <button onclick="window.location.href='/delete-issue'">🗑️ Delete Issue</button>
+    </div>
+
+    <form th:action="@{/logout}" method="post">
+        <button class="logout">🚪 Logout</button>
+    </form>
+</div>
+</body>
+</html>
