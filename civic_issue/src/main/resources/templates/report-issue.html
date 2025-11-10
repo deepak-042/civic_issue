@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Issue</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background-color: #f7f8fa;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        form {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 15px;
+        }
+        input, textarea, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 6px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #map {
+            height: 400px;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: 2px solid #007bff;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            font-weight: bold;
+            border: none;
+            margin-top: 20px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #response {
+            max-width: 700px;
+            margin: 20px auto;
+            text-align: center;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+
+        /* ✅ Hide increment/decrement arrows for number inputs */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body>
+<h2>Report an Issue</h2>
+
+<form id="issueForm" enctype="multipart/form-data">
+    <label>Title:</label>
+    <input type="text" id="title" name="title" required placeholder="Enter issue title">
+
+    <label>Description:</label>
+    <textarea id="description" name="description" rows="4" required placeholder="Describe the issue"></textarea>
+
+    <label>Department:</label>
+    <select id="department_id" name="department_id" required>
+        <option value="">Select Department</option>
+        <th:block th:each="dept : ${departments}">
+            <option th:value="${dept.id}" th:text="${dept.name}"></option>
+        </th:block>
+    </select>
+
+    <label>User ID:</label>
+    <input type="number" id="user_id" name="user_id" required placeholder="Enter your user ID">
+
+    <label>Image:</label>
+    <input type="file" id="imgfile" name="imgfile" accept="image/*">
+
+    <label>Select issue location on map:</label>
+    <div id="map"></div>
+
+    <input type="hidden" id="latitude" name="latitude">
+    <input type="hidden" id="longitude" name="longitude">
+
+    <button type="submit">Submit Issue</button>
+</form>
+
+<div id="response"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    let map, marker;
+
+    document.addEventListener("DOMContentLoaded", () => {
+        initializeMap();
+        document.getElementById("issueForm").addEventListener("submit", handleSubmit);
+    });
+
+    function initializeMap() {
+        map = L.map("map").setView([20.5937, 78.9629], 5); // Default: India
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "© OpenStreetMap contributors"
+        }).addTo(map);
+
+        // ✅ Auto-detect location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    setMarker(lat, lng);
+                    map.setView([lat, lng], 15);
+                },
+                (err) => {
+                    console.warn("Geolocation failed:", err.message);
+                    alert("Could not detect location automatically. Please select manually.");
+                }
+            );
+        } else {
+            alert("Geolocation is not supported by your browser. Please pick location manually.");
+        }
+
+        // Allow manual marker placement
+        map.on("click", (e) => {
+            setMarker(e.latlng.lat, e.latlng.lng);
+        });
+    }
+
+    function setMarker(lat, lng) {
+        if (marker) map.removeLayer(marker);
+        marker = L.marker([lat, lng]).addTo(map)
+            .bindPopup(`Location: ${lat.toFixed(5)}, ${lng.toFixed(5)}`).openPopup();
+
+        document.getElementById("latitude").value = lat;
+        document.getElementById("longitude").value = lng;
+    }
+
+    function handleSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const lat = document.getElementById("latitude").value;
+        const lng = document.getElementById("longitude").value;
+        const responseDiv = document.getElementById("response");
+
+        if (!lat || !lng) {
+            responseDiv.innerHTML = '<p class="error"> Please select a location on the map.</p>';
+            return;
+        }
+
+        const formData = new FormData(form);
+        responseDiv.innerHTML = '<p>⏳ Submitting issue...</p>';
+
+        fetch("/issue", {
+            method: "POST",
+            body: formData
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Failed to submit issue");
+            return res.json();
+        })
+        .then(data => {
+            responseDiv.innerHTML = `
+                <p class="success">
+                    ✅ Issue reported successfully!<br>
+                    ID: ${data.id || "N/A"}<br>
+                    Location: ${lat}, ${lng}
+                </p>`;
+            form.reset();
+            if (marker) map.removeLayer(marker);
+        })
+        .catch(err => {
+            console.error(err);
+            responseDiv.innerHTML = '<p class="error"> ❌ Error submitting issue.</p>';
+        });
+    }
+</script>
+</body>
+</html>
+
+
